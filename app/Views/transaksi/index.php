@@ -1,124 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transaksi Penjualan</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 7px;
-            box-sizing: border-box;
-        }
-
-        .right {
-            text-align: right;
-        }
-
-        .btn {
-            padding: 8px 12px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="/assets/css/app.css">
 </head>
 <body>
+<main class="page">
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-mark">MM</div>
+            <div>
+                <h1>Transaksi Penjualan</h1>
+                <p class="subtitle">Kasir: <?= esc(session()->get('nama')); ?></p>
+            </div>
+        </div>
+        <div class="actions">
+            <a class="btn" href="/dashboard">Dashboard</a>
+            <a class="btn" href="/logout">Logout</a>
+        </div>
+    </header>
 
-<h2>Transaksi Penjualan</h2>
+    <?php if (session()->getFlashdata('error')) : ?>
+        <p class="alert"><?= esc(session()->getFlashdata('error')); ?></p>
+    <?php endif; ?>
 
-<a href="/dashboard">Dashboard</a>
+    <form action="/transaksi/store" method="post" onsubmit="return cekBayar()">
+        <div class="transaction-layout">
+            <section class="panel">
+                <div class="panel-header toolbar">
+                    <div>
+                        <h2>Daftar Belanja</h2>
+                        <p class="subtitle">Pilih barang dan jumlah pembelian.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="tambahBaris()">Tambah Barang</button>
+                </div>
 
-<br><br>
+                <div class="table-wrap">
+                    <table class="data-table" id="tabel-barang">
+                        <thead>
+                            <tr>
+                                <th>Barang</th>
+                                <th class="right" width="140">Harga</th>
+                                <th class="center" width="100">Stok</th>
+                                <th class="center" width="100">Qty</th>
+                                <th class="right" width="150">Subtotal</th>
+                                <th class="center" width="100">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <select name="barang_id[]" onchange="pilihBarang(this)" required>
+                                        <option value="">-- Pilih Barang --</option>
+                                        <?php foreach ($barang as $row) : ?>
+                                            <option
+                                                value="<?= $row['id']; ?>"
+                                                data-harga="<?= $row['harga']; ?>"
+                                                data-stok="<?= $row['stok']; ?>"
+                                            >
+                                                <?= esc($row['nama_barang']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="harga right" readonly>
+                                </td>
+                                <td>
+                                    <input type="text" class="stok center" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" name="qty[]" class="qty center" value="1" min="1" oninput="hitungSubtotal(this)" required>
+                                </td>
+                                <td>
+                                    <input type="text" class="subtotal right" readonly>
+                                </td>
+                                <td class="center">
+                                    <button type="button" class="btn btn-small btn-danger" onclick="hapusBaris(this)">Hapus</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-<?php if (session()->getFlashdata('error')) : ?>
-    <p style="color:red;"><?= session()->getFlashdata('error'); ?></p>
-<?php endif; ?>
+            <aside class="summary-box">
+                <div class="summary-item">
+                    <span>Total</span>
+                    <strong>Rp <span id="grand-total-text">0</span></strong>
+                    <input type="hidden" name="total" id="grand-total">
+                </div>
 
-<form action="/transaksi/store" method="post" onsubmit="return cekBayar()">
+                <div class="panel">
+                    <div class="panel-body form-grid">
+                        <div class="form-field">
+                            <label for="bayar">Uang Bayar</label>
+                            <input type="number" name="bayar" id="bayar" min="0" required oninput="hitungKembalian()">
+                        </div>
 
-    <table id="tabel-barang">
-        <thead>
-            <tr>
-                <th>Barang</th>
-                <th width="120">Harga</th>
-                <th width="100">Stok</th>
-                <th width="100">Qty</th>
-                <th width="140">Subtotal</th>
-                <th width="80">Aksi</th>
-            </tr>
-        </thead>
+                        <div class="summary-item">
+                            <span>Kembalian</span>
+                            <strong>Rp <span id="kembalian-text">0</span></strong>
+                        </div>
 
-        <tbody>
-            <tr>
-                <td>
-                    <select name="barang_id[]" onchange="pilihBarang(this)" required>
-                        <option value="">-- Pilih Barang --</option>
-                        <?php foreach ($barang as $row) : ?>
-                            <option 
-                                value="<?= $row['id']; ?>"
-                                data-harga="<?= $row['harga']; ?>"
-                                data-stok="<?= $row['stok']; ?>"
-                            >
-                                <?= $row['nama_barang']; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </td>
-
-                <td>
-                    <input type="text" class="harga" readonly>
-                </td>
-
-                <td>
-                    <input type="text" class="stok" readonly>
-                </td>
-
-                <td>
-                    <input type="number" name="qty[]" class="qty" value="1" min="1" oninput="hitungSubtotal(this)" required>
-                </td>
-
-                <td>
-                    <input type="text" class="subtotal" readonly>
-                </td>
-
-                <td>
-                    <button type="button" class="btn" onclick="hapusBaris(this)">Hapus</button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    <button type="button" class="btn" onclick="tambahBaris()">+ Tambah Barang</button>
-
-    <br><br>
-
-    <h3>Total: Rp <span id="grand-total-text">0</span></h3>
-    <input type="hidden" name="total" id="grand-total">
-
-    <label>Uang Bayar</label><br>
-    <input type="number" name="bayar" id="bayar" required oninput="hitungKembalian()">
-
-    <h3>Kembalian: Rp <span id="kembalian-text">0</span></h3>
-
-    <br>
-
-    <button type="submit" class="btn">Simpan Transaksi & Cetak Nota</button>
-
-</form>
+                        <button type="submit" class="btn btn-primary">Simpan Transaksi & Cetak Nota</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </form>
+</main>
 
 <script>
 function formatRupiah(angka) {
@@ -129,7 +122,6 @@ function pilihBarang(select) {
     let option = select.options[select.selectedIndex];
     let harga = option.getAttribute('data-harga') || 0;
     let stok = option.getAttribute('data-stok') || 0;
-
     let row = select.closest('tr');
 
     row.querySelector('.harga').value = harga;
@@ -140,7 +132,6 @@ function pilihBarang(select) {
 
 function hitungSubtotal(input) {
     let row = input.closest('tr');
-
     let harga = parseInt(row.querySelector('.harga').value) || 0;
     let qty = parseInt(row.querySelector('.qty').value) || 0;
     let stok = parseInt(row.querySelector('.stok').value) || 0;
@@ -222,6 +213,5 @@ function cekBayar() {
     return true;
 }
 </script>
-
 </body>
 </html>

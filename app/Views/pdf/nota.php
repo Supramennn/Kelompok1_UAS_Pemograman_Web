@@ -1,62 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <style>
+        @page {
+            margin: 6pt;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #222;
-        }
-
-        .nota {
-            width: 100%;
-        }
-
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-        }
-
-        .header h2 {
             margin: 0;
-            font-size: 22px;
-            letter-spacing: 1px;
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 7.4pt;
+            line-height: 1.18;
+            color: #111827;
+            background: #ffffff;
         }
 
-        .header p {
-            margin: 4px 0;
-            font-size: 12px;
-        }
-
-        .info {
-            margin-bottom: 15px;
-        }
-
-        .info table {
+        .receipt {
             width: 100%;
         }
 
-        .info td {
-            padding: 2px 0;
+        .store {
+            padding: 0 0 4pt;
+            border-bottom: 1pt solid #0f766e;
+            text-align: center;
         }
 
-        table.detail {
+        .store h1 {
+            margin: 0 0 2pt;
+            color: #0f766e;
+            font-size: 12pt;
+            letter-spacing: 0;
+        }
+
+        .store p {
+            margin: 1pt 0;
+            color: #475569;
+            font-size: 6.6pt;
+        }
+
+        .title {
+            margin: 4pt 0 3pt;
+            padding: 2pt 0;
+            color: #ffffff;
+            background: #0f766e;
+            text-align: center;
+            font-size: 7.6pt;
+            font-weight: bold;
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
         }
 
-        table.detail th {
-            border-bottom: 1px solid #333;
-            padding: 6px;
+        .meta td {
+            padding: 1pt 0;
+            vertical-align: top;
+        }
+
+        .meta-label {
+            width: 38pt;
+            color: #64748b;
+        }
+
+        .meta-value {
+            font-weight: bold;
+        }
+
+        .separator {
+            margin: 4pt 0;
+            border-top: 1pt dashed #94a3b8;
+        }
+
+        .items th {
+            padding: 2pt 0;
+            border-bottom: 1pt solid #334155;
+            color: #334155;
+            font-size: 6.6pt;
             text-align: left;
         }
 
-        table.detail td {
-            border-bottom: 1px solid #ddd;
-            padding: 6px;
+        .items td {
+            padding: 1.6pt 0;
+            vertical-align: top;
+        }
+
+        .item-name {
+            padding-top: 3pt;
+            font-weight: bold;
+        }
+
+        .item-calc {
+            color: #64748b;
+            font-size: 6.7pt;
         }
 
         .right {
@@ -64,85 +101,105 @@
         }
 
         .summary {
-            margin-top: 15px;
-            width: 100%;
-            border-collapse: collapse;
+            margin-top: 3pt;
         }
 
         .summary td {
-            padding: 5px;
-            border-bottom: 1px solid #ddd;
+            padding: 1.8pt 0;
+        }
+
+        .summary .label {
+            color: #475569;
+        }
+
+        .summary .grand td {
+            padding: 3pt 4pt;
+            color: #ffffff;
+            background: #0f766e;
+            font-size: 8pt;
+            font-weight: bold;
         }
 
         .footer {
+            margin-top: 5pt;
+            padding-top: 4pt;
+            border-top: 1pt dashed #94a3b8;
+            color: #475569;
             text-align: center;
-            margin-top: 25px;
-            font-size: 12px;
+            font-size: 6.5pt;
         }
     </style>
 </head>
 <body>
+<?php
+    $tanggal = ! empty($transaksi['tanggal']) ? date('d/m/Y H:i', strtotime($transaksi['tanggal'])) : '-';
+    $namaKasir = $transaksi['nama_kasir'] ?? '-';
+?>
 
-<div class="nota">
-
-    <div class="header">
-        <h2>Madura Mart</h2>
-        <p>Jl. Mulu capek kali</p>
-        <p>Telp: 0813 kamu cinta aku engga</p>
+<div class="receipt">
+    <div class="store">
+        <h1>Madura Mart</h1>
+        <p>Jl. Mulu Capek Kali</p>
+        <p>Telp: 0819-kapan-kapan-kita-liburan</p>
     </div>
 
-    <div class="info">
-        <table>
-            <tr>
-                <td>Kode Transaksi</td>
-                <td>: <?= $transaksi['kode_transaksi']; ?></td>
-            </tr>
-            <tr>
-                <td>Tanggal</td>
-                <td>: <?= $transaksi['tanggal']; ?></td>
-            </tr>
-        </table>
-    </div>
+    <div class="title">NOTA PENJUALAN</div>
 
-    <table class="detail">
+    <table class="meta">
+        <tr>
+            <td class="meta-label">No</td>
+            <td class="meta-value">: <?= esc($transaksi['kode_transaksi']); ?></td>
+        </tr>
+        <tr>
+            <td class="meta-label">Tanggal</td>
+            <td class="meta-value">: <?= esc($tanggal); ?></td>
+        </tr>
+        <tr>
+            <td class="meta-label">Kasir</td>
+            <td class="meta-value">: <?= esc($namaKasir); ?></td>
+        </tr>
+    </table>
+
+    <div class="separator"></div>
+
+    <table class="items">
         <tr>
             <th>Barang</th>
-            <th class="right">Harga</th>
-            <th class="right">Qty</th>
             <th class="right">Subtotal</th>
         </tr>
 
         <?php foreach ($detail as $row) : ?>
-        <tr>
-            <td><?= $row['nama_barang']; ?></td>
-            <td class="right">Rp <?= number_format($row['harga'], 0, ',', '.'); ?></td>
-            <td class="right"><?= $row['qty']; ?></td>
-            <td class="right">Rp <?= number_format($row['subtotal'], 0, ',', '.'); ?></td>
-        </tr>
+            <tr>
+                <td class="item-name" colspan="2"><?= esc($row['nama_barang']); ?></td>
+            </tr>
+            <tr>
+                <td class="item-calc"><?= esc($row['qty']); ?> x Rp <?= number_format($row['harga'], 0, ',', '.'); ?></td>
+                <td class="right">Rp <?= number_format($row['subtotal'], 0, ',', '.'); ?></td>
+            </tr>
         <?php endforeach; ?>
     </table>
 
+    <div class="separator"></div>
+
     <table class="summary">
         <tr>
-            <td>Total</td>
+            <td class="label">Total</td>
             <td class="right">Rp <?= number_format($transaksi['total'], 0, ',', '.'); ?></td>
         </tr>
         <tr>
-            <td>Bayar</td>
+            <td class="label">Bayar</td>
             <td class="right">Rp <?= number_format($transaksi['bayar'], 0, ',', '.'); ?></td>
         </tr>
-        <tr>
-            <td>Kembalian</td>
+        <tr class="grand">
+            <td>Kembali</td>
             <td class="right">Rp <?= number_format($transaksi['kembalian'], 0, ',', '.'); ?></td>
         </tr>
     </table>
 
     <div class="footer">
-        <p>Terima kasih sudah berbelanja.</p>
-        <p>Barang yang sudah dibeli tidak dapat dikembalikan.</p>
+        Terima kasih sudah berbelanja.<br>
+        Barang yang sudah dibeli tidak dapat dikembalikan.
     </div>
-
 </div>
-
 </body>
 </html>

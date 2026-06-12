@@ -6,8 +6,10 @@ class Dashboard extends BaseController
 {
     public function index()
     {
-        if (!session()->get('logged_in')) {
-            return redirect()->to('/login');
+        $redirect = $this->requireLogin();
+
+        if ($redirect !== null) {
+            return $redirect;
         }
 
         return view('dashboard/index');

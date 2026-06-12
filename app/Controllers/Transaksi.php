@@ -22,8 +22,10 @@ class Transaksi extends BaseController
 
     public function index()
     {
-        if (!session()->get('logged_in')) {
-            return redirect()->to('/login');
+        $redirect = $this->requireLogin();
+
+        if ($redirect !== null) {
+            return $redirect;
         }
 
         $data['barang'] = $this->barangModel->findAll();
@@ -32,110 +34,135 @@ class Transaksi extends BaseController
     }
 
     public function store()
-{
-    $barangIds = $this->request->getPost('barang_id');
-    $qtys = $this->request->getPost('qty');
-    $bayar = (int) $this->request->getPost('bayar');
+    {
+        $redirect = $this->requireLogin();
 
-    if (!$barangIds || !$qtys) {
-        return redirect()->back()->with('error', 'Barang belum dipilih.');
-    }
-
-    $items = [];
-    $total = 0;
-
-    // Gabungkan qty kalau barang yang sama dipilih lebih dari sekali
-    $qtyPerBarang = [];
-
-    foreach ($barangIds as $index => $barangId) {
-        if (!$barangId) {
-            continue;
+        if ($redirect !== null) {
+            return $redirect;
         }
 
-        $qty = (int) $qtys[$index];
+        $barangIds = $this->request->getPost('barang_id');
+        $qtys = $this->request->getPost('qty');
+        $bayar = (int) $this->request->getPost('bayar');
 
-        if ($qty <= 0) {
-            continue;
+        if (!$barangIds || !$qtys) {
+            return redirect()->back()->with('error', 'Barang belum dipilih.');
         }
 
-        if (!isset($qtyPerBarang[$barangId])) {
-            $qtyPerBarang[$barangId] = 0;
+        $items = [];
+        $total = 0;
+
+        // Gabungkan qty kalau barang yang sama dipilih lebih dari sekali
+        $qtyPerBarang = [];
+
+        foreach ($barangIds as $index => $barangId) {
+            if (!$barangId) {
+                continue;
+            }
+
+            $qty = (int) $qtys[$index];
+
+            if ($qty <= 0) {
+                continue;
+            }
+
+            if (!isset($qtyPerBarang[$barangId])) {
+                $qtyPerBarang[$barangId] = 0;
+            }
+
+            $qtyPerBarang[$barangId] += $qty;
         }
 
-        $qtyPerBarang[$barangId] += $qty;
-    }
-
-    if (empty($qtyPerBarang)) {
-        return redirect()->back()->with('error', 'Data barang tidak valid.');
-    }
-
-    foreach ($qtyPerBarang as $barangId => $qty) {
-        $barang = $this->barangModel->find($barangId);
-
-        if (!$barang) {
-            return redirect()->back()->with('error', 'Barang tidak ditemukan.');
+        if (empty($qtyPerBarang)) {
+            return redirect()->back()->with('error', 'Data barang tidak valid.');
         }
 
-        if ($qty > $barang['stok']) {
-            return redirect()->back()->with('error', 'Stok ' . $barang['nama_barang'] . ' tidak mencukupi.');
+        foreach ($qtyPerBarang as $barangId => $qty) {
+            $barang = $this->barangModel->find($barangId);
+
+            if (!$barang) {
+                return redirect()->back()->with('error', 'Barang tidak ditemukan.');
+            }
+
+            if ($qty > $barang['stok']) {
+                return redirect()->back()->with('error', 'Stok ' . $barang['nama_barang'] . ' tidak mencukupi.');
+            }
+
+            $subtotal = $barang['harga'] * $qty;
+            $total += $subtotal;
+
+            $items[] = [
+                'barang' => $barang,
+                'qty' => $qty,
+                'subtotal' => $subtotal
+            ];
         }
 
-        $subtotal = $barang['harga'] * $qty;
-        $total += $subtotal;
+        if ($bayar < $total) {
+            return redirect()->back()->with('error', 'Uang bayar kurang.');
+        }
 
-        $items[] = [
-            'barang' => $barang,
-            'qty' => $qty,
-            'subtotal' => $subtotal
-        ];
+        $kembalian = $bayar - $total;
+        $kodeTransaksi = 'TRX' . date('YmdHis');
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        $transaksiId = $this->transaksiModel->insert([
+            'kode_transaksi' => $kodeTransaksi,
+            'total' => $total,
+            'bayar' => $bayar,
+            'kembalian' => $kembalian,
+            'user_id' => session()->get('user_id')
+        ], true);
+
+        foreach ($items as $item) {
+            $barang = $item['barang'];
+            $qty = $item['qty'];
+
+            $this->detailModel->insert([
+                'transaksi_id' => $transaksiId,
+                'barang_id' => $barang['id'],
+                'harga' => $barang['harga'],
+                'qty' => $qty,
+                'subtotal' => $item['subtotal']
+            ]);
+
+            $this->barangModel->update($barang['id'], [
+                'stok' => $barang['stok'] - $qty
+            ]);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return redirect()->back()->with('error', 'Transaksi gagal disimpan.');
+        }
+
+        return redirect()->to('/transaksi/nota/' . $transaksiId);
     }
 
-    if ($bayar < $total) {
-        return redirect()->back()->with('error', 'Uang bayar kurang.');
-    }
-
-    $kembalian = $bayar - $total;
-    $kodeTransaksi = 'TRX' . date('YmdHis');
-
-    $db = \Config\Database::connect();
-    $db->transStart();
-
-    $transaksiId = $this->transaksiModel->insert([
-        'kode_transaksi' => $kodeTransaksi,
-        'total' => $total,
-        'bayar' => $bayar,
-        'kembalian' => $kembalian,
-        'user_id' => session()->get('user_id')
-    ], true);
-
-    foreach ($items as $item) {
-        $barang = $item['barang'];
-        $qty = $item['qty'];
-
-        $this->detailModel->insert([
-            'transaksi_id' => $transaksiId,
-            'barang_id' => $barang['id'],
-            'harga' => $barang['harga'],
-            'qty' => $qty,
-            'subtotal' => $item['subtotal']
-        ]);
-
-        $this->barangModel->update($barang['id'], [
-            'stok' => $barang['stok'] - $qty
-        ]);
-    }
-
-    $db->transComplete();
-
-    if ($db->transStatus() === false) {
-        return redirect()->back()->with('error', 'Transaksi gagal disimpan.');
-    }
-
-    return redirect()->to('/transaksi/nota/' . $transaksiId);
-}
     public function cetakNota($id)
     {
-        $transaksi = $this->transaksiModel->find($id);
+        $redirect = $this->requireLogin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        $transaksi = $this->transaksiModel
+            ->select('transaksi.*, users.nama AS nama_kasir')
+            ->join('users', 'users.id = transaksi.user_id', 'left')
+            ->where('transaksi.id', $id)
+            ->first();
+
+        if (!$transaksi) {
+            return redirect()->to('/transaksi')->with('error', 'Transaksi tidak ditemukan.');
+        }
+
+        if (session()->get('role') === 'kasir' && (int) $transaksi['user_id'] !== (int) session()->get('user_id')) {
+            return redirect()->to('/transaksi')->with('error', 'Anda tidak memiliki akses ke nota tersebut.');
+        }
 
         $detail = $this->detailModel
             ->select('detail_transaksi.*, barang.nama_barang')
@@ -152,7 +179,33 @@ class Transaksi extends BaseController
 
         $dompdf = new Dompdf();
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A5', 'portrait');
+        $itemCount = count($detail);
+
+        // Fungsi konversi mm ke point
+        $mmToPt = function ($mm) {
+            return ($mm / 25.4) * 72;
+        };
+
+        // Lebar thermal 80mm
+        $paperWidth = $mmToPt(80);
+
+        // Tinggi dasar nota: header, info transaksi, total, bayar, footer
+        $baseHeight = 115;
+
+        // Tinggi tambahan per item barang
+        $rowHeight = 8;
+
+        // Total tinggi nota
+        $paperHeightMm = $baseHeight + ($itemCount * $rowHeight);
+
+        // Minimal tinggi biar nota tetap enak dilihat
+        if ($paperHeightMm < 120) {
+            $paperHeightMm = 120;
+        }
+
+$paperHeight = $mmToPt($paperHeightMm);
+
+$dompdf->setPaper([0, 0, $paperWidth, $paperHeight], 'portrait');
         $dompdf->render();
         $dompdf->stream('nota-' . $transaksi['kode_transaksi'] . '.pdf', ['Attachment' => false]);
     }

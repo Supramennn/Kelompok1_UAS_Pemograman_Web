@@ -42,4 +42,28 @@ abstract class BaseController extends Controller
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');
     }
+
+    protected function requireLogin()
+    {
+        if (! session()->get('logged_in')) {
+            return redirect()->to('/login');
+        }
+
+        return null;
+    }
+
+    protected function requireAdmin()
+    {
+        $redirect = $this->requireLogin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        if (session()->get('role') !== 'admin') {
+            return redirect()->to('/dashboard')->with('error', 'Anda tidak memiliki akses ke halaman tersebut.');
+        }
+
+        return null;
+    }
 }

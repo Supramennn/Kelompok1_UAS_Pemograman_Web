@@ -15,8 +15,10 @@ class Barang extends BaseController
 
     public function index()
     {
-        if (!session()->get('logged_in')) {
-            return redirect()->to('/login');
+        $redirect = $this->requireLogin();
+
+        if ($redirect !== null) {
+            return $redirect;
         }
 
         $data['barang'] = $this->barangModel->findAll();
@@ -26,11 +28,23 @@ class Barang extends BaseController
 
     public function create()
     {
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         return view('barang/create');
     }
 
     public function store()
     {
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         $this->barangModel->save([
             'kode_barang' => $this->request->getPost('kode_barang'),
             'nama_barang' => $this->request->getPost('nama_barang'),
@@ -43,6 +57,12 @@ class Barang extends BaseController
 
     public function edit($id)
     {
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         $data['barang'] = $this->barangModel->find($id);
 
         return view('barang/edit', $data);
@@ -50,6 +70,12 @@ class Barang extends BaseController
 
     public function update($id)
     {
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         $this->barangModel->update($id, [
             'kode_barang' => $this->request->getPost('kode_barang'),
             'nama_barang' => $this->request->getPost('nama_barang'),
@@ -62,6 +88,12 @@ class Barang extends BaseController
 
     public function delete($id)
     {
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         $this->barangModel->delete($id);
 
         return redirect()->to('/barang')->with('success', 'Data barang berhasil dihapus.');

@@ -16,8 +16,10 @@ class Laporan extends BaseController
 
     public function index()
     {
-        if (!session()->get('logged_in')) {
-            return redirect()->to('/login');
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
         }
 
         $data['transaksi'] = $this->transaksiModel
@@ -29,6 +31,12 @@ class Laporan extends BaseController
 
     public function cetakPdf()
     {
+        $redirect = $this->requireAdmin();
+
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         $data['transaksi'] = $this->transaksiModel
             ->orderBy('tanggal', 'DESC')
             ->findAll();
@@ -37,7 +45,7 @@ class Laporan extends BaseController
 
         $dompdf = new Dompdf();
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
         $dompdf->stream('laporan-transaksi.pdf', ['Attachment' => false]);
     }
